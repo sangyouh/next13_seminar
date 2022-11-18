@@ -1,1 +1,1 @@
-# next13_seminar
+# next 13 세미나
