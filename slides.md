@@ -309,12 +309,12 @@ h2 {
 // 수동으로 invalidate 될때까지 cache 가 된다.
 //  `getStaticProps` 와 비슷하다.
 // `force-cache` 가 기본설정이며, 간결성을 위해 생략 될 수 있다.
-// Static data 를 의미한다.
+// Static data fetching 을 의미한다.
 fetch(URL, { cache: "force-cache" });
 
 // 매 request 마다 refetch 가 이루어진다.
 // `getServerSideProps` 와 비슷하다.
-// Dynamic data 를 의미한다
+// Dynamic data fetching 을 의미한다
 fetch(URL, { cache: "no-store" });
 
 // 이 요청은 10초의 캐시 유효기간을 가진다.
@@ -331,6 +331,97 @@ h2 {
   -moz-background-clip: text;
   -webkit-text-fill-color: transparent;
   -moz-text-fill-color: transparent;
+}
+</style>
+
+---
+
+## Data Fetching Patterns
+
+- Parallel Data Fetching : client-server waterfalls 를 최소화 하기에 좋은 패턴
+
+```js
+import Albums from "./albums";
+async function getArtist(username) {
+  const res = await fetch(`https://api.github.com/artist/${username}`);
+  return res.json();
+}
+async function getArtistAlbums(username) {
+  const res = await fetch(`https://api.github.com/artist/${username}/type`);
+  return res.json();
+}
+export default async function Page({ params: { username } }) {
+  // 두개의 request 를 동시에 실행한다.
+  const artistData = getAvatar(username);
+  const albumData = getAvatarType(username);
+  // promise 가 resolve 될때까지 기다린다.
+  const [artist, album] = await Promise.all([artistData, albumData]);
+  return (
+    <div>
+      <h1>{artist.name}</h1>
+      <Albums list={albumData} />
+    </div>
+  );
+}
+```
+
+<style>
+h2 {
+background-color: #2B90B6;
+background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);
+background-size: 100%;
+-webkit-background-clip: text;
+-moz-background-clip: text;
+-webkit-text-fill-color: transparent;
+-moz-text-fill-color: transparent;
+}
+</style>
+
+---
+
+- Server Component 내에서 await 을 호출하기 이전에 fetch 를 시작함으로써 각 request 가 동시에 request 를 fetch 한다. 이를 통해 client-server waterfalls 를 최소화 할 수 있다.
+- 하지만 사용자의 입장에서 모든 promises 가 resolve 될때 까지 render result를 볼수가 없으므로, React 의 Suspense 를 이용해 better user experience 를 도출 할 수 있다.
+
+```js
+// parallel 로 initiate 를 하지만,
+const artistData = getArtist(username);
+const albumData = getArtistAlbums(username);
+// artistData 의 promise 가 먼저 resolve 되도록 기다린다.
+const artist = await artistData;
+return (
+  <div>
+    {/* 아티스트 이름 정보를 먼저 렌더 시키고, 앨범 정보는 Suspense 안에 wrap 하여 나중에 보여지도록 한다*/}
+    <h1>{artist.name}</h1>
+    <React.Suspense fallback={<h1>Loading...</h1>}>
+      <Album promise={albumData} />
+    </React.Suspense>
+  </div>
+);
+// 그리고 Album 컴포넌트 내에서 albums 의 promise 가 resolve 될때까지 기다린다.
+async function Album({ promise }) {
+  const albums = await promise;
+  return <p>{album.name}</p>;
+}
+```
+
+---
+
+## Sequential(순차적) Data Fetching
+
+- data 를 순차적으로 fetch 하기 위해서 두가지 방법이 있다.
+
+1. 해당 데이터를 필요로 하는 component 내에서 직접적으로 fetch 한다.
+2. 해당 데이터를 필요로 하는 component 내에서 그 결과를 await 한다.
+
+<style>
+h2 {
+background-color: #2B90B6;
+background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);
+background-size: 100%;
+-webkit-background-clip: text;
+-moz-background-clip: text;
+-webkit-text-fill-color: transparent;
+-moz-text-fill-color: transparent;
 }
 </style>
 
