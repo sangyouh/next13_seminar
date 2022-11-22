@@ -86,6 +86,53 @@ h2 {
 
 ---
 
+## Routing Fundamentals
+
+### 서버 중심 Routing with Client-side 네이게이션
+
+- 기존의 pages directory 기반 routing 은 client-side routing 을 사용했지만 새로운 app directory 의 routing Server Components 와 서버 data fetching 의 대응을 위한 은 서버중심의 라우팅을(Server-centric routing) 사용한다.
+- Server-centric routing 에서는 Client 가 route map 을 다운로드 받을 필요가 없어진다.
+- Routing 은 server-centric 이지만 navigation 은 Link component 를 이용한 client-side 이다.
+- 말인 즉슨, 사용자가 새로운 route 로 navigate 할 시, Next 는 페이지를 reload 하는 대신 URL 만을 업데이트 한 후, 변화한 부분만을 새로 render 한다.
+
+### Partial Rendering
+
+- 하나의 layout 파일을 share 하는 형제 route 들은 모든 페이지를 re-render 하는 대신 부분적으로만 렌더가 이루어 지기 때문에 performance 가 더 좋아질 수 있다.
+
+<style>
+h2 {
+  background-color: #2B90B6;
+  background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);
+  background-size: 100%;
+  -webkit-background-clip: text;
+  -moz-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -moz-text-fill-color: transparent;
+}
+</style>
+
+---
+
+## Advanced Routing Patterns (아직 추가 안된 기능)
+
+1. Parallel Routes: 각각의 navigation 이 가능한 두개 이상의 페이지를 동시에 하나의 뷰에서 보여줄 수 있게 한다.
+2. Intercepting Routes: 하나의 route 를 가로채 다른 route 의 context 를 보여줄 수 있게 한다. 피드 내의 사진을 expanding 할때와 같이 현재 페이지의 context 를 유지시키는게 중요 할 때 사용이 가능하다.
+3. Conditional Routes: 조건에 따라 route 를 render 할 수 있게 해준다. 로그인 했을 시에만 보이는 페이지 등에 사용이 가능하다.
+
+<style>
+h2 {
+  background-color: #2B90B6;
+  background-image: linear-gradient(45deg, #4EC5D4 10%, #146b8c 20%);
+  background-size: 100%;
+  -webkit-background-clip: text;
+  -moz-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -moz-text-fill-color: transparent;
+}
+</style>
+
+---
+
 ## How to use app directory
 
 1. 아래와 같이 next.config.js 설정을 해줘야 한다.
@@ -380,7 +427,7 @@ background-size: 100%;
 ---
 
 - Server Component 내에서 await 을 호출하기 이전에 fetch 를 시작함으로써 각 request 가 동시에 request 를 fetch 한다. 이를 통해 client-server waterfalls 를 최소화 할 수 있다.
-- 하지만 사용자의 입장에서 모든 promises 가 resolve 될때 까지 render result를 볼수가 없으므로, React 의 Suspense 를 이용해 better user experience 를 도출 할 수 있다.
+- 하지만 사용자의 입장에서 모든 promises 가 resolve 될때 까지 렌더 결과를 볼수가 없으므로, React 의 Suspense 를 이용해 보다 나은 사용자 경험을 도출 할 수 있다.
 
 ```js
 // parallel 로 initiate 를 하지만,
@@ -412,6 +459,37 @@ async function Album({ promise }) {
 
 1. 해당 데이터를 필요로 하는 component 내에서 직접적으로 fetch 한다.
 2. 해당 데이터를 필요로 하는 component 내에서 그 결과를 await 한다.
+
+- 아래의 예시와 같이 컴포넌트 내에서 데이터를 fetch 함에 있어, 라우트 내에 nested 된 각각의 fetch request 는 이전의 request 가 완료되기 이전에 fetch 나 render 를 시작 할 수 없다.
+
+```js
+// app/artist/page.tsx
+// ...
+async function Playlists({ artistID }) {
+  // playlist 를 기다린다
+  const playlists = await getArtistPlaylists(artistID);
+  return (
+    <ul>
+      {playlists.map((playlist) => (
+        <li key={playlist.id}>{playlist.name}</li>
+      ))}
+    </ul>
+  );
+}
+export default async function Page({ params: { username } }) {
+  // artist 를 기다린다
+  const artist = await getArtist(username);
+  // "await" 을 사용하여 request 를 더 추가하면 평행 fetch 가 된다
+  return (
+    <>
+      <h1>{artist.name}</h1>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Playlists artistID={artist.id} />
+      </Suspense>
+    </>
+  );
+}
+```
 
 <style>
 h2 {
